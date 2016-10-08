@@ -1,10 +1,6 @@
-import datetime
 import queue
-from datetime import timedelta
-import time, threading
+import threading
 import mysql.connector
-from tqdm import tqdm
-from time import sleep
 
 SOURCE_ENDPOINT = "master.mysql.internal.io"
 SOURCE_LOGIN = "mysqladmin"
@@ -162,13 +158,13 @@ def parallelCheck():
 
     validation = bcolors.FAIL + "Fail" + bcolors.ENDC
     src_dbs = source.getDBList()
-    dst_dbs = destination.getDBList()
+    #dst_dbs = destination.getDBList()
     tableList = source.getTableList(src_dbs)
-    #pbar = tqdm(sorted(tableList), bar_format='{percentage:3.0f}% - ', position=-2, dynamic_ncols=True, unit_scale=True)
-    pbar = sorted(tableList)
     print ("Analysing {} tables".format(len(tableList)))
-    sleep(2)
-    for table_name in pbar:
+
+    p_all = len(tableList)
+    p_i = 0
+    for table_name in sorted(tableList):
             qrow_source =queue.Queue()
             qrow_destination = queue.Queue()
             t1 = threading.Thread(target=source.getRows, args=(table_name, qrow_source,))
@@ -182,14 +178,18 @@ def parallelCheck():
             if row_source == row_destination:
                validation = bcolors.OKBLUE + "OK" + bcolors.ENDC
 
-            result = (row_source, row_destination)
-            print ("Table {}: {} - {}".format(table_name, result, validation))
-            #pbar.set_description("Processing %s" % table_name)
+            # Calculation of % completed.
+            p_i += 1
+            porcent = bcolors.WARNING + "{}%".format(int ((p_i * 100) / p_all)) + bcolors.ENDC
+
+            result = (row_source, row_destination,)
+            print ("Table {}: {} - {} completed- {}".format(table_name, result, porcent, validation))
 
 
 
 if __name__ == "__main__":
     checkBasic()
+    print("---- Heavy Process... -----")
     parallelCheck()
 
 
